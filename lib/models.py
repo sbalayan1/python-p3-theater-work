@@ -2,6 +2,7 @@
 
 from sqlalchemy import (Column, String, Integer, Boolean, ForeignKey, create_engine)
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.ext.orderinglist import ordering_list
 from sqlalchemy.orm import relationship, sessionmaker, backref
 
 # engine = create_engine("sqlite:///theater.db")
@@ -24,7 +25,7 @@ class Audition(Base):
     role_id = Column(Integer(), ForeignKey('roles.id'))
 
     def __repr__(self):
-        return (f"Audition: \n actor: {self.actor}: \n location: {self.location} \n phone: {self.phone} \n hired: {self.hired}")
+        return (f"\nAudition: \nactor: {self.actor}: \nlocation: {self.location} \nphone: {self.phone} \nhired: {self.hired}")
 
     def call_back(self):
         session = create_session()
@@ -39,7 +40,7 @@ class Role(Base):
 
     id = Column(Integer(), primary_key=True)
     character_name = Column(String())
-    auditions = relationship('Audition', backref='role')
+    auditions = relationship('Audition', backref='role', order_by="Audition.id", collection_class=ordering_list('id'))
 
     def __repr__(self):
         return (f"Role: \n character_name: {self.character_name} \n auditions: {[[*self.auditions]]}")
@@ -47,23 +48,22 @@ class Role(Base):
     def actors(self):
         return [audition.actor for audition in self.auditions]
 
-    def actors(self):
+    def locations(self):
         return [audition.location for audition in self.auditions]
 
-    # def sort_auditions(self):
-    #     session = create_session()
-    #     session.query()
+    def top_5_auditions(self):
+        output = []
+        for a in self.auditions:
+            if (a.hired == True): output.append(a)
+
+        return output
 
     def lead(self):
-        if not self.auditions: return "no actor has been hired for this role"
-        audIdx = 0
-
-        for idx, a in enumerate(self.auditions):
-            newestActor = self.auditions[audIdx].id
-            auditionIdx = idx if a.id < newestActor else audIdx
-
-        return self.auditions[audIdx]
+        topAud = self.top_5_auditions()
+        if not topAud: return "no actor has been hired for this role"
+        return topAud[0]
 
     def understudy(self):
-        pass
-        print(self.auditions.sort(key=id))
+        topAuds = self.top_5_auditions()
+        if not topAuds or len(topAuds) <= 1: return "no actor has been hired for understudy for this role"
+        return topAuds[1]
